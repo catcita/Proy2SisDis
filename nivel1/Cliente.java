@@ -99,6 +99,8 @@ public class Cliente {
     private void procesarMensaje(Mensaje mensaje) {
         switch (mensaje.getTipo()) {
             case CONSULTAR_ESTADO:
+                // responder con más información
+                String accion = mensaje.obtenerString("accion");
                 responderEstado();
                 break;
 
@@ -127,8 +129,13 @@ public class Cliente {
         respuesta.agregarDato("enOperacion", enOperacion.get());
         respuesta.agregarDato("totalCargas", totalCargas);
         respuesta.agregarDato("totalLitros", totalLitros);
+
         enviarMensaje(respuesta);
+
+        String estado = enOperacion.get() ? "EN OPERACIÓN" : "LIBRE";
+        System.out.println("[" + id + "] Estado reportado: " + estado);
     }
+
 
     /**
      * Actualiza los precios recibidos del distribuidor
@@ -138,17 +145,26 @@ public class Cliente {
         Map<String, Double> nuevosPrecios = (Map<String, Double>) mensaje.obtenerDato("precios");
 
         if (nuevosPrecios != null) {
+            System.out.println("[" + id + "] ===== ACTUALIZANDO PRECIOS =====");
             for (Map.Entry<String, Double> entry : nuevosPrecios.entrySet()) {
                 try {
                     TipoCombustible tipo = TipoCombustible.valueOf(entry.getKey());
-                    precios.put(tipo, entry.getValue());
+                    double precioAnterior = precios.getOrDefault(tipo, 0.0);
+                    double precioNuevo = entry.getValue();
+
+                    precios.put(tipo, precioNuevo);
+
+                    System.out.println("[" + id + "] " + tipo.getNombre() +
+                            ": $" + String.format("%.2f", precioAnterior) +
+                            " -> $" + String.format("%.2f", precioNuevo));
                 } catch (IllegalArgumentException e) {
                     System.err.println("[" + id + "] Tipo de combustible inválido: " + entry.getKey());
                 }
             }
-            System.out.println("[" + id + "] Precios actualizados: " + precios);
+            System.out.println("[" + id + "] ================================");
 
             Mensaje confirmacion = new Mensaje(Mensaje.Tipo.ACK, id);
+            confirmacion.agregarDato("mensaje", "Precios actualizados");
             enviarMensaje(confirmacion);
         }
     }

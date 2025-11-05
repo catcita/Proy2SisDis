@@ -27,6 +27,7 @@ public class DistribuidorGUI extends JFrame {
     private JLabel lblEstadoServidor;
     private JLabel lblEstadoAdmin;
     private JLabel lblSurtidores;
+    private JLabel lblPreciosPendientes;
     private JButton btnVerificarBD;
     private JButton btnEstadisticasBD;
 
@@ -34,8 +35,8 @@ public class DistribuidorGUI extends JFrame {
     private JTextArea txtLog;
 
     public DistribuidorGUI() {
-        setTitle("Distribuidor - Sistema Distribuido");
-        setSize(700, 600);
+        setTitle("Distribuidor");
+        setSize(500, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout(10, 10));
 
@@ -144,6 +145,14 @@ public class DistribuidorGUI extends JFrame {
         lblSurtidores = new JLabel("0");
         panel.add(lblSurtidores, gbc);
 
+        // NUEVO: Precios pendientes en cola
+        gbc.gridx = 0; gbc.gridy = 3;
+        panel.add(new JLabel("Precios Pendientes:"), gbc);
+        gbc.gridx = 1;
+        lblPreciosPendientes = new JLabel("0");
+        lblPreciosPendientes.setToolTipText("Clientes esperando actualización de precios");
+        panel.add(lblPreciosPendientes, gbc);
+
         // Botones de BD
         JPanel panelBD = new JPanel(new FlowLayout());
         btnVerificarBD = new JButton("Verificar BD");
@@ -158,7 +167,7 @@ public class DistribuidorGUI extends JFrame {
         panelBD.add(btnVerificarBD);
         panelBD.add(btnEstadisticasBD);
 
-        gbc.gridx = 0; gbc.gridy = 3;
+        gbc.gridx = 0; gbc.gridy = 5;
         gbc.gridwidth = 2;
         panel.add(panelBD, gbc);
 
@@ -319,6 +328,17 @@ public class DistribuidorGUI extends JFrame {
     private void actualizarEstado() {
         if (distribuidor != null) {
             lblSurtidores.setText(String.valueOf(distribuidor.getCantidadClientes()));
+
+            // NUEVO: Actualizar contador de precios pendientes
+            int pendientes = distribuidor.getCantidadPreciosPendientes();
+            lblPreciosPendientes.setText(String.valueOf(pendientes));
+
+            // Cambiar color según haya o no pendientes
+            if (pendientes > 0) {
+                lblPreciosPendientes.setForeground(Color.ORANGE);
+            } else {
+                lblPreciosPendientes.setForeground(Color.BLACK);
+            }
 
             if (distribuidor.isConectadoAdmin()) {
                 lblEstadoAdmin.setText("Conectado");

@@ -31,8 +31,8 @@ public class ClienteGUI extends JFrame {
     private JTextArea txtLog;
 
     public ClienteGUI() {
-        setTitle("Surtidor - Sistema Distribuido");
-        setSize(600, 500);
+        setTitle("Surtidor");
+        setSize(500, 570);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout(10, 10));
 

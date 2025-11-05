@@ -11,6 +11,8 @@ import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**********************************************************************************************************************/
@@ -42,11 +44,16 @@ public class Distribuidor {
     private Map<TipoCombustible, Double> preciosBase;
     private List<Transaccion> transaccionesPendientes;
 
+    //cola de actualización de precios para clientes en operación
+    private Map<String, Map<String, Double>> clientesPreciosPendientes;
+    private ScheduledExecutorService schedulerActualizacionPrecios;
+
     //CONSTRUCTOR
     public Distribuidor(String id, int puertoLocal, double factorUtilidad) {
         this.id = id;
         this.puertoLocal = puertoLocal;
         this.factorUtilidad = factorUtilidad;
+        this.schedulerActualizacionPrecios = schedulerActualizacionPrecios;
 
         this.clientesConectados = new ConcurrentHashMap<>();
         this.servidorActivo = new AtomicBoolean(false);
@@ -55,6 +62,10 @@ public class Distribuidor {
         this.baseDatos = new BaseDatos(id);
         this.preciosBase = new HashMap<>();
         this.transaccionesPendientes = new CopyOnWriteArrayList<>();
+
+        // NUEVO: Inicializar cola de precios pendientes
+        this.clientesPreciosPendientes = new ConcurrentHashMap<>();
+        this.schedulerActualizacionPrecios = Executors.newScheduledThreadPool(1);
 
         inicializarPreciosDefecto();
     }
@@ -223,14 +234,25 @@ public class Distribuidor {
     /**
      * sincroniza transacciones pendientes cuando se reconecta */
     private void sincronizarTransacciones() {
-        if (!transaccionesPendientes.isEmpty()) {
-            System.out.println("[" + id + "] Sincronizando " +
-                    transaccionesPendientes.size() + " transacciones pendientes...");
+        if (transaccionesPendientes.isEmpty()) {
+            System.out.println("[" + id + "] No hay transacciones pendientes para sincronizar.");
+            return;
+        }
 
-            for (Transaccion t : transaccionesPendientes) {
-                //aquí podrías enviar las transacciones a admin si es necesario
-            }
+        System.out.println("[" + id + "] Sincronizando " +
+                transaccionesPendientes.size() + " transacciones pendientes...");
+
+        // Crear mensaje de sincronización
+        Mensaje mensajeSync = new Mensaje(Mensaje.Tipo.SINCRONIZAR_TRANSACCIONES, id);
+        mensajeSync.agregarDato("transacciones", new ArrayList<>(transaccionesPendientes));
+        mensajeSync.agregarDato("cantidad", transaccionesPendientes.size());
+
+        // Enviar a administración
+        if (enviarMensajeAdmin(mensajeSync)) {
+            System.out.println("[" + id + "] Transacciones sincronizadas exitosamente");
             transaccionesPendientes.clear();
+        } else {
+            System.err.println("[" + id + "] Error al sincronizar transacciones");
         }
     }
 
@@ -258,16 +280,18 @@ public class Distribuidor {
     /**
      * Envía mensaje a administración
      */
-    private void enviarMensajeAdmin(Mensaje mensaje) {
+    private boolean enviarMensajeAdmin(Mensaje mensaje) {
         try {
             if (outAdmin != null && conectadoAdmin.get()) {
                 outAdmin.writeObject(mensaje);
                 outAdmin.flush();
+                return true;
             }
         } catch (IOException e) {
             System.err.println("[" + id + "] Error al enviar mensaje a admin: " + e.getMessage());
             conectadoAdmin.set(false);
         }
+        return false;
     }
 
     /**
@@ -348,6 +372,31 @@ public class Distribuidor {
                     }
                     break;
 
+                case ESTADO_CLIENTE:
+                    //Manejar respuesta de estado del cliente
+                    Boolean enOperacion = mensaje.obtenerBoolean("enOperacion");
+                    String accion = mensaje.obtenerString("accion");
+
+                    if (enOperacion != null) {
+                        if (!enOperacion && "actualizar_precio".equals(accion)) {
+                            // cliente libre, enviar precios
+                            Map<String, Double> preciosPendientes = clientesPreciosPendientes.get(idSurtidor);
+                            if (preciosPendientes != null) {
+                                Mensaje msgPrecio = new Mensaje(Mensaje.Tipo.ACTUALIZAR_PRECIO_CLIENTE, id);
+                                msgPrecio.agregarDato("precios", preciosPendientes);
+                                enviarMensaje(msgPrecio);
+
+                                //remover de la cola
+                                clientesPreciosPendientes.remove(idSurtidor);
+                                System.out.println("[" + id + "] Precios actualizados en cliente " + idSurtidor);
+                            }
+                        } else if (enOperacion) {
+                            System.out.println("[" + id + "] Cliente " + idSurtidor +
+                                    " en operación. Precio quedará en cola.");
+                        }
+                    }
+                    break;
+
                 default:
                     System.out.println("[" + id + "] Mensaje de surtidor: " + mensaje);
             }
@@ -374,6 +423,11 @@ public class Distribuidor {
                 // Ignorar
             }
         }
+    }
+
+    // obtener cantidad de precios pendientes
+    public int getCantidadPreciosPendientes() {
+        return clientesPreciosPendientes.size();
     }
 
     //GETTERS

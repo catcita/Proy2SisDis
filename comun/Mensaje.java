@@ -20,6 +20,7 @@ public class Mensaje implements Serializable {
         // Nivel 2 -> Nivel 3
         ENVIAR_REPORTE,
         CONFIRMACION_PRECIO,
+        SINCRONIZAR_TRANSACCIONES,
 
         // Nivel 2 -> Nivel 1
         CONSULTAR_ESTADO,

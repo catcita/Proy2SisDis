@@ -258,12 +258,17 @@ public class Administracion {
                             " se reconectó");
                     break;
 
+                case SINCRONIZAR_TRANSACCIONES:
+                    //manejar sincronización de transacciones
+                    procesarSincronizacion(mensaje);
+                    break;
+
                 default:
                     System.out.println("[" + id + "] Mensaje de distribuidor: " + mensaje);
             }
         }
 
-        @SuppressWarnings("unchecked")
+
         private void procesarReporte(Mensaje mensaje) {
             Integer totalTrans = mensaje.obtenerEntero("totalTransacciones");
             Double totalVentas = mensaje.obtenerDouble("totalVentas");
@@ -281,6 +286,46 @@ public class Administracion {
             System.out.println("  Transacciones: " + totalTrans);
             System.out.println("  Total Ventas: $" + totalVentas);
         }
+
+
+        /**
+         * Procesa sincronización de transacciones pendientes
+         */
+        @SuppressWarnings("unchecked")
+        private void procesarSincronizacion(Mensaje mensaje) {
+            List<Transaccion> transaccionesPendientes =
+                    (List<Transaccion>) mensaje.obtenerDato("transacciones");
+            Integer cantidad = mensaje.obtenerEntero("cantidad");
+
+            if (transaccionesPendientes != null && !transaccionesPendientes.isEmpty()) {
+                System.out.println("[" + id + "] ===================================");
+                System.out.println("[" + id + "] SINCRONIZACIÓN DE DATOS");
+                System.out.println("[" + id + "] Distribuidor: " + idDistribuidor);
+                System.out.println("[" + id + "] Transacciones recibidas: " + cantidad);
+
+                // Agregar al historial del distribuidor
+                transacciones.addAll(transaccionesPendientes);
+                historialCompleto.addAll(transaccionesPendientes);
+
+                // Calcular totales
+                double totalSincronizado = transaccionesPendientes.stream()
+                        .mapToDouble(Transaccion::getMontoTotal)
+                        .sum();
+
+                System.out.println("[" + id + "] Monto total sincronizado: $" +
+                        String.format("%.2f", totalSincronizado));
+                System.out.println("[" + id + "] ===================================");
+
+                // Enviar ACK de confirmación
+                Mensaje ack = new Mensaje(Mensaje.Tipo.ACK, id);
+                ack.agregarDato("mensaje", "Transacciones sincronizadas exitosamente");
+                ack.agregarDato("cantidad", cantidad);
+                enviarMensaje(ack);
+            } else {
+                System.out.println("[" + id + "] Sincronización vacía de " + idDistribuidor);
+            }
+        }
+
 
         public boolean enviarMensaje(Mensaje mensaje) {
             try {
@@ -306,6 +351,8 @@ public class Administracion {
                 // Ignorar
             }
         }
+
+
 
         public String getIdDistribuidor() {
             return idDistribuidor;

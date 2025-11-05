@@ -38,7 +38,7 @@ public class AdministracionGUI extends JFrame {
     private JTextArea txtLog;
 
     public AdministracionGUI() {
-        setTitle("Administración Central - Sistema Distribuido");
+        setTitle("Administración Central");
         setSize(900, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout(10, 10));
@@ -57,6 +57,7 @@ public class AdministracionGUI extends JFrame {
         // Panel de configuración
         JPanel panelConfig = new JPanel(new FlowLayout(FlowLayout.LEFT));
         panelConfig.setBorder(BorderFactory.createTitledBorder("Configuración"));
+
 
         panelConfig.add(new JLabel("ID:"));
         txtId = new JTextField("ADMIN-001", 10);
@@ -88,6 +89,7 @@ public class AdministracionGUI extends JFrame {
         panelEstado.add(Box.createHorizontalStrut(20));
 
         panelEstado.add(new JLabel("Distribuidores:"));
+        // arreglar esto porque la cantidad de distribuidores nunca cambia de 0
         lblDistribuidores = new JLabel("0");
         panelEstado.add(lblDistribuidores);
 
