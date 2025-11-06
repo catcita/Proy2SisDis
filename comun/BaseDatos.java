@@ -81,12 +81,57 @@ public class BaseDatos {
      * Carga todas las transacciones del archivo principal.
      */
     public synchronized List<Transaccion> obtenerTodasTransacciones() {
-        // En una implementación real, se deserializarían o parsearían las líneas.
-        // Aquí, por simplicidad, solo devolveremos una lista vacía
-        // o cargaremos de forma simulada si fuese necesario para el reporte.
+        List<Transaccion> transacciones = new ArrayList<>();
 
-        // Para la entrega, esta función se usaría para el reporte a la Admin[cite: 19].
-        return new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(new FileReader(FILE_PRINCIPAL))) {
+            // Saltamos la primera línea si hubiera cabecera (en este caso, no la hay, pero es buena práctica)
+            String linea;
+            while ((linea = br.readLine()) != null) {
+                // Parsear la línea CSV a objeto Transaccion
+                Transaccion t = parsearLineaCSV(linea);
+                if (t != null) {
+                    transacciones.add(t);
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("[" + idDistribuidor + "] ERROR al leer transacciones de archivo: " + e.getMessage());
+        }
+
+        return transacciones;
+    }
+
+    /**
+     * Parsea una línea CSV para crear un objeto Transaccion.
+     */
+    private Transaccion parsearLineaCSV(String linea) {
+        if (linea == null || linea.isEmpty()) return null;
+
+        try {
+            // El formato CSV está definido en Transaccion.toCSV()
+            String[] campos = linea.split(";");
+
+            // Asegurarse de tener 8 campos: id, idCliente, idDistribuidor, TipoCombustible, litros, precioLitro, montoTotal, fechaHora
+            if (campos.length != 8) {
+                System.err.println("Error: Línea CSV con formato incorrecto: " + linea);
+                return null;
+            }
+
+            // Los campos que realmente necesitamos para el cálculo (litros y precioLitro)
+            String idCliente = campos[1];
+            String idDistribuidor = campos[2];
+            TipoCombustible tipoCombustible = TipoCombustible.valueOf(campos[3]);
+            double litros = Double.parseDouble(campos[4]);
+            double precioLitro = Double.parseDouble(campos[5]);
+
+            // Creamos un nuevo objeto Transaccion con los datos relevantes
+            // Nota: Se usa el constructor existente, pero se ignoran los campos id y fechaHora del CSV para esta simple reconstrucción.
+            // Para una reconstrucción precisa, se necesitarían setters o un constructor completo.
+            return new Transaccion(idCliente, idDistribuidor, tipoCombustible, litros, precioLitro);
+
+        } catch (Exception e) {
+            System.err.println("Error al parsear línea de transacción: " + e.getMessage());
+            return null;
+        }
     }
 
     /**
