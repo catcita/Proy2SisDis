@@ -117,6 +117,9 @@ public class Distribuidor {
             //iniciar hilo para escuchar mensajes de administración
             new Thread(this::escucharAdministracion).start();
 
+            Mensaje msgIdentificacion = new Mensaje(Mensaje.Tipo.RECONEXION, id);
+            enviarMensajeAdmin(msgIdentificacion);
+
             //sincronizar transacciones pendientes
             sincronizarTransacciones();
 
