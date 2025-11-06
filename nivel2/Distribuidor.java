@@ -161,6 +161,18 @@ public class Distribuidor {
                 enviarReporte();
                 break;
 
+            case ACK:
+                // Verificar si este ACK es la confirmación de la sincronización
+                String mensajeConfirmacion = mensaje.obtenerString("mensaje");
+                if ("Transacciones sincronizadas exitosamente".equals(mensajeConfirmacion)) {
+                    Integer cantidad = mensaje.obtenerEntero("cantidad");
+                    // Ahora sí, la Administración confirmó que procesó los datos.
+                    transaccionesPendientes.clear();
+                    System.out.println("[" + id + "] Sincronización confirmada por Admin. " +
+                            cantidad + " transacciones removidas de la lista pendiente.");
+                }
+                break;
+
             default:
                 System.out.println("[" + id + "] Mensaje de admin: " + mensaje);
         }
@@ -253,7 +265,6 @@ public class Distribuidor {
         // Enviar a administración
         if (enviarMensajeAdmin(mensajeSync)) {
             System.out.println("[" + id + "] Transacciones sincronizadas exitosamente");
-            transaccionesPendientes.clear();
         } else {
             System.err.println("[" + id + "] Error al sincronizar transacciones");
         }
